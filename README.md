@@ -2,7 +2,7 @@
 
 A beautiful, dark-themed Python application for remote script and binary execution on Windows and Linux systems.
 
-![Remote Execute](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Remote Execute](https://img.shields.io/badge/Python-3.13-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-green)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 
@@ -53,7 +53,7 @@ A beautiful, dark-themed Python application for remote script and binary executi
 ## Installation
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.13 (or 3.8+)
 - pip (Python package installer)
 
 ### For Windows Remote Execution

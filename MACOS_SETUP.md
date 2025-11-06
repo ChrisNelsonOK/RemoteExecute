@@ -17,11 +17,11 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### 3. Install Python 3.8+
+### 3. Install Python 3.13
 
 ```bash
 # Install Python via Homebrew (includes tkinter)
-brew install python@3.11 python-tk@3.11
+brew install python@3.13 python-tk@3.13
 
 # Verify installation
 python3 --version
@@ -206,10 +206,10 @@ Click **"Manage Credentials"** → **"Add Credential"**
 
 ```bash
 # Install tkinter support
-brew install python-tk@3.11
+brew install python-tk@3.13
 
 # Or reinstall Python with tkinter
-brew reinstall python@3.11
+brew reinstall python@3.13
 ```
 
 ### "SSL: CERTIFICATE_VERIFY_FAILED"
@@ -218,7 +218,7 @@ This may occur with WinRM over HTTPS. The application already uses `server_cert_
 
 ```bash
 # Install certificates
-/Applications/Python\ 3.11/Install\ Certificates.command
+/Applications/Python\ 3.13/Install\ Certificates.command
 ```
 
 ### Slow Connection Over VPN
@@ -239,7 +239,7 @@ If you have multiple Python versions:
 
 ```bash
 # Use specific Python version
-python3.11 -m venv venv
+python3.13 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python main.py
@@ -324,7 +324,7 @@ The application can be minimized to the macOS menu bar for quick access. The UI 
 
 Before first use, verify:
 
-- [ ] Python 3.8+ installed
+- [ ] Python 3.13 installed
 - [ ] Xcode Command Line Tools installed
 - [ ] Virtual environment created and activated
 - [ ] Dependencies installed without errors
