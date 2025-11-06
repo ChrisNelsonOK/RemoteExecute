@@ -9,16 +9,37 @@ from typing import Tuple, List
 import tempfile
 import time
 
+# Try to import config, use defaults if not available
+try:
+    from config import (
+        SSH_TIMEOUT, WINRM_TIMEOUT, EXECUTION_TIMEOUT,
+        CONNECTION_TEST_TIMEOUT, SSH_PORT, WINRM_HTTP_PORT, WINRM_HTTPS_PORT,
+        LINUX_REMOTE_DIR, WINDOWS_REMOTE_DIR
+    )
+except ImportError:
+    # Default values if config.py doesn't exist
+    SSH_TIMEOUT = 30
+    WINRM_TIMEOUT = 30
+    EXECUTION_TIMEOUT = 600
+    CONNECTION_TEST_TIMEOUT = 10
+    SSH_PORT = 22
+    WINRM_HTTP_PORT = 5985
+    WINRM_HTTPS_PORT = 5986
+    LINUX_REMOTE_DIR = "/tmp"
+    WINDOWS_REMOTE_DIR = "C:\\Temp"
+
 class RemoteExecutor:
     """Base class for remote execution"""
 
     @staticmethod
-    def test_connection(host: str, port: int = None, timeout: int = 5) -> Tuple[bool, str]:
+    def test_connection(host: str, port: int = None, timeout: int = None) -> Tuple[bool, str]:
         """Test if host is reachable"""
+        if timeout is None:
+            timeout = CONNECTION_TEST_TIMEOUT
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
-            result = sock.connect_ex((host, port or 22))
+            result = sock.connect_ex((host, port or SSH_PORT))
             sock.close()
             if result == 0:
                 return True, "Connection successful"
@@ -52,7 +73,7 @@ class LinuxExecutor(RemoteExecutor):
                 port=self.port,
                 username=self.username,
                 password=self.password,
-                timeout=10
+                timeout=SSH_TIMEOUT
             )
             return True, "Connected successfully"
         except paramiko.AuthenticationException:
@@ -75,7 +96,7 @@ class LinuxExecutor(RemoteExecutor):
                 return False, "Not connected"
 
             if not remote_path:
-                remote_path = f"/tmp/{os.path.basename(local_path)}"
+                remote_path = f"{LINUX_REMOTE_DIR}/{os.path.basename(local_path)}"
 
             sftp = self.client.open_sftp()
             sftp.put(local_path, remote_path)
@@ -86,9 +107,11 @@ class LinuxExecutor(RemoteExecutor):
         except Exception as e:
             return False, f"Upload error: {str(e)}"
 
-    def upload_files(self, local_paths: List[str], remote_dir: str = "/tmp") -> Tuple[bool, str, List[str]]:
+    def upload_files(self, local_paths: List[str], remote_dir: str = None) -> Tuple[bool, str, List[str]]:
         """Upload multiple files to remote system"""
         uploaded_paths = []
+        if remote_dir is None:
+            remote_dir = LINUX_REMOTE_DIR
         try:
             if not self.client:
                 return False, "Not connected", []
@@ -119,7 +142,7 @@ class LinuxExecutor(RemoteExecutor):
             if not self.client:
                 return False, "Not connected", ""
 
-            stdin, stdout, stderr = self.client.exec_command(command, timeout=300)
+            stdin, stdout, stderr = self.client.exec_command(command, timeout=EXECUTION_TIMEOUT)
             exit_code = stdout.channel.recv_exit_status()
 
             output = stdout.read().decode('utf-8', errors='replace')
@@ -141,7 +164,7 @@ class LinuxExecutor(RemoteExecutor):
                 return False, "", message
 
             # Extract remote path from message
-            remote_path = message.split("to ")[-1] if "to " in message else f"/tmp/{os.path.basename(local_script_path)}"
+            remote_path = message.split("to ")[-1] if "to " in message else f"{LINUX_REMOTE_DIR}/{os.path.basename(local_script_path)}"
 
             # Determine script type and execute
             if local_script_path.endswith('.py'):
@@ -159,12 +182,12 @@ class LinuxExecutor(RemoteExecutor):
 class WindowsExecutor(RemoteExecutor):
     """Execute commands on Windows systems via WinRM"""
 
-    def __init__(self, host: str, username: str, password: str, domain: str = None, port: int = 5985):
+    def __init__(self, host: str, username: str, password: str, domain: str = None, port: int = None):
         self.host = host
         self.username = username
         self.password = password
         self.domain = domain
-        self.port = port
+        self.port = port if port is not None else WINRM_HTTP_PORT
         self.session = None
 
     def connect(self) -> Tuple[bool, str]:
@@ -179,7 +202,7 @@ class WindowsExecutor(RemoteExecutor):
             # Try both HTTP and HTTPS
             endpoints = [
                 f"http://{self.host}:{self.port}/wsman",
-                f"https://{self.host}:5986/wsman"
+                f"https://{self.host}:{WINRM_HTTPS_PORT}/wsman"
             ]
 
             for endpoint in endpoints:
@@ -212,7 +235,7 @@ class WindowsExecutor(RemoteExecutor):
                 return False, "Not connected"
 
             if not remote_path:
-                remote_path = f"C:\\Temp\\{os.path.basename(local_path)}"
+                remote_path = f"{WINDOWS_REMOTE_DIR}\\{os.path.basename(local_path)}"
 
             # Ensure remote directory exists
             remote_dir = os.path.dirname(remote_path).replace('/', '\\')
@@ -258,9 +281,11 @@ $bytes = [System.Convert]::FromBase64String("{encoded_content}")
         except Exception as e:
             return False, f"Upload error: {str(e)}"
 
-    def upload_files(self, local_paths: List[str], remote_dir: str = "C:\\Temp") -> Tuple[bool, str, List[str]]:
+    def upload_files(self, local_paths: List[str], remote_dir: str = None) -> Tuple[bool, str, List[str]]:
         """Upload multiple files to remote system"""
         uploaded_paths = []
+        if remote_dir is None:
+            remote_dir = WINDOWS_REMOTE_DIR
         try:
             if not self.session:
                 return False, "Not connected", []
@@ -311,7 +336,7 @@ $bytes = [System.Convert]::FromBase64String("{encoded_content}")
                 return False, "", message
 
             # Extract remote path from message
-            remote_path = message.split("to ")[-1] if "to " in message else f"C:\\Temp\\{os.path.basename(local_script_path)}"
+            remote_path = message.split("to ")[-1] if "to " in message else f"{WINDOWS_REMOTE_DIR}\\{os.path.basename(local_script_path)}"
 
             # Determine script type and execute
             if local_script_path.endswith('.ps1'):
